@@ -19,7 +19,7 @@ for text in mini_texts:
         try:
             morph_texts[-1].extend(model_types.segment(lemma))
         except KeyError:
-            morph_texts[-1].extend(model_types.viterbi_segment(lemma))
+            morph_texts[-1].extend(model_types.viterbi_segment(lemma)[0])
 
 model = gensim.models.Word2Vec(morph_texts, sg=1, size=300, window=5, min_count=3, workers=4, negative=15)
 model.save('word2vec_morpho')
