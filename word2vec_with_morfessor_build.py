@@ -2,6 +2,7 @@ import gensim
 import pymorphy2
 import morfessor
 import time
+import gzip
 
 start_time = time.time()
 io = morfessor.MorfessorIO()
@@ -9,7 +10,7 @@ morph = pymorphy2.MorphAnalyzer()
 
 model_types = io.read_binary_model_file('morfessor/types')
 
-with open('lemmatized_data.txt', encoding='utf-8') as opener:
+with gzip.open('lemmatized_data.txt.gz', 'rt', 'utf-8') as opener:
     mini_texts = opener.read().split('\n')
 mini_texts = [mini_text.split(' ') for mini_text in mini_texts]
 morph_texts = []
