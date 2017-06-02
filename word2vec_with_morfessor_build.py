@@ -1,27 +1,37 @@
 import gensim
-import pymorphy2
 import morfessor
 import time
-import gzip
+import os
 
 start_time = time.time()
 io = morfessor.MorfessorIO()
-morph = pymorphy2.MorphAnalyzer()
-
 model_types = io.read_binary_model_file('morfessor/types')
+path_dir = 'C:/Users/Ольга/Downloads/lemmas_only' # 'C:/Users/Ольга/Desktop/test'
 
-with gzip.open('lemmatized_data.txt.gz', 'rt', 'utf-8') as opener:
-    mini_texts = opener.read().split('\n')
-mini_texts = [mini_text.split(' ') for mini_text in mini_texts]
-morph_texts = []
-for text in mini_texts:
-    morph_texts.append([])
-    for lemma in text:
-        try:
-            morph_texts[-1].extend(model_types.segment(lemma))
-        except KeyError:
-            morph_texts[-1].extend(model_types.viterbi_segment(lemma)[0])
 
-model = gensim.models.Word2Vec(morph_texts, sg=1, size=300, window=5, min_count=3, workers=4, negative=15)
+class MySentences(object):
+    def __init__(self, dirname):
+        self.dirname = dirname
+
+    def __iter__(self):
+        for fname in os.listdir(self.dirname):
+
+            for line in open(os.path.join(self.dirname, fname), encoding='utf-8', errors='ignore'):
+
+                output = []
+
+                for word in line.split():
+
+                    try:
+                        output.extend(model_types.segment(word))
+                    except KeyError:
+                        output.extend(model_types.viterbi_segment(word)[0])
+                    output.append(' ')
+
+                yield output
+
+corpus = MySentences(path_dir)  # a memory-friendly iterator from Rehurek's post
+model = gensim.models.Word2Vec(corpus, sg=1, size=300, window=5, min_count=3, workers=4, negative=15)
+
 model.save('word2vec_morpho')
 print("Elapsed time for learning: {:.3f} sec".format(time.time() - start_time))
