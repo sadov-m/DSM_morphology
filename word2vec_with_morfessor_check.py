@@ -2,51 +2,16 @@ import gensim
 import morfessor
 import pymystem3
 import numpy
-from sklearn.externals import joblib
-from scipy import spatial
+# from scipy import spatial
 import time
 
 io = morfessor.MorfessorIO()
 model = gensim.models.Word2Vec.load('word2vec_morpho')
+classic_model = gensim.models.Word2Vec.load('word2vec_standart')
 analyzer = pymystem3.Mystem()
-word_for_analysis = input("введите слово для анализа: ")
-top_n = int(input("сколько топ-кандидатов показывать? введите целое число: "))
 start_time = time.time()
-modifier = 0.5
-
+word_for_analysis = input('type in a word: ')
 model_types = io.read_binary_model_file('morfessor/types')
-
-
-def dictionary_creation():
-    final_dict = {}
-
-    with open('lemmatized_data.txt', encoding='utf-8') as opener:
-        mini_texts = opener.read().split('\n')
-    mini_texts = [mini_text.split(' ') for mini_text in mini_texts]
-    for text in mini_texts:
-
-        for lemma in text:
-            try:
-                segments = model_types.segment(lemma)
-            except KeyError:
-                segments = model_types.viterbi_segment(lemma)[0]
-
-            for segment in segments:
-                # some debugging due to a different output mode for known and unknown words for our morfessor model
-                try:
-                    if segment in final_dict:
-                        final_dict[segment].add(lemma)
-                    else:
-                        final_dict[segment] = set()
-                        final_dict[segment].add(lemma)
-                except TypeError:
-                    print(segment, segments, lemma)
-                    exit(1)
-    print("Elapsed time for a file: {:.3f} sec".format(time.time() - start_time))
-
-    joblib.dump(final_dict, 'dict_of_compounds')
-
-dictionary = joblib.load('dict_of_compounds')
 
 word_for_test = analyzer.lemmatize(word_for_analysis)[0]
 compounds = []
@@ -57,70 +22,38 @@ except KeyError:
     compounds.extend(model_types.viterbi_segment(word_for_test)[0])
 
 vecs = []
-print(compounds)
+print('the compounds are:', compounds)
 
-candidates = set()
-# getting ready vecs for our target word + searching for candidates for it
+# getting ready vecs for our target word
 for compound in compounds:
-    try:
-        vecs.append(model[compound])
-    except KeyError:
-        vecs.append(numpy.array([0.0 for i in range(300)]))
-    try:
-        candidates.update(dictionary[compound])
-    except KeyError:
-        pass
 
-total = 0
+    try:
+        vecs.append(model.wv[compound])
+        values_type = set()
+        for digit in model.wv[compound]:
+            values_type.add(type(digit))
+        print(values_type)
+        # print('similar by compound:', model.wv.most_similar(positive=[compound]))
+    except KeyError:
+        vecs.append(numpy.array([0.0 for i in range(300)], dtype='float32'))
+
+total_sum = numpy.array([0.0 for j in range(300)], dtype='float32')
+values_type = set()
+for digit in total_sum:
+    values_type.add(type(digit))
+print(values_type)
+
 for ind, vec in enumerate(vecs):
-    length = len(vecs)
-    if ind == 0:
-        total = vec * modifier
-    elif ind == length - 1:
-        total = numpy.add(total, vec * modifier)
-    else:
-        total = numpy.add(total, vec)
+    total_sum += vec
+    # numpy.add(total_sum, vec)
 
-print(len(candidates))
+values_type = set()
+for digit in total_sum:
+    values_type.add(type(digit))
+print(values_type)
+total_average = total_sum/float(len(compounds))
 
-vecs_for_candidates = []
-candidates = list(candidates)
-
-for candidate in candidates:
-
-    candidate_compounds = []
-    try:
-        candidate_compounds.extend(model_types.segment(candidate))
-    except KeyError:
-        candidate_compounds.extend(model_types.viterbi_segment(candidate)[0])
-
-    candidate_vecs = []
-    for candidate_compound in candidate_compounds:
-        try:
-            candidate_vecs.append(model[candidate_compound])
-        except KeyError:
-            candidate_vecs.append(numpy.array([0.0 for i in range(300)]))
-
-    final = 0
-    for ind, vec in enumerate(candidate_vecs):
-        length = len(candidate_vecs)
-        if ind == 0:
-            final = vec * modifier
-        elif ind == length - 1:
-           final = numpy.add(final, vec * modifier)
-        else:
-            final = numpy.add(final, vec)
-
-    vecs_for_candidates.append(final)
-
-results = []
-for vector in vecs_for_candidates:
-    results.append(1 - spatial.distance.cosine(total, vector))
-
-top_n_indexes = sorted(range(len(results)), key=lambda i: results[i])[-top_n:]
-
-for index in top_n_indexes:
-    print(word_for_analysis, "the best candidate is:", candidates[index], ", distance:", results[index])
-
+print('similar by sum_vector are:', classic_model.wv.similar_by_vector(total_sum))
+print('similar by average_vector are:', classic_model.wv.similar_by_vector(total_average))
+print('similar by classic model are:', classic_model.wv.most_similar(positive=[word_for_test]))
 print("Elapsed time for this word: {:.3f} sec".format(time.time() - start_time))
-#print(model.similar_by_vector(total))
