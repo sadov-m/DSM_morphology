@@ -7,6 +7,9 @@ import requests
 from lxml import html
 import random
 from time import sleep
+import csv
+from scipy.stats import spearmanr
+import numpy
 
 start_time = time.time()
 io = morfessor.MorfessorIO()
@@ -235,3 +238,35 @@ def get_model_estimations():
                     estimation = float_finder.findall(response)[0]
 
                 estimation_writer.write(target_word + ' ' + paired_word + ' ' + estimation + '\n')
+
+                
+def golden_standard_parsing():
+    path = 'golden_standard.csv'
+    extract_pairs = re.compile('\w+-\w+-?\w+|\w+')
+
+    with open(path, 'r', encoding='utf-8') as ex:
+        reader = csv.reader(ex, delimiter=",")
+        header = next(reader)
+        evaluations = [] # every elem of a list is an annotator
+        word_pairs = []
+        dict_of_values = {}
+
+        for line in reader:
+            evaluations.append([int(elem) for elem in line[4:]])
+
+        for string in header[4:]:
+            word_pairs.append('\t'.join(extract_pairs.findall(string)[-2:]))
+
+        length = len(evaluations)
+        correlation = []
+
+        for ind, annotator in enumerate(evaluations):
+            print('annotator number:', ind)
+
+            for i in range(ind + 1, length):
+                print('their correlation with annotator number:', i, 'is', spearmanr(annotator, evaluations[i]))
+                correlation.append(spearmanr(annotator, evaluations[i])[0])
+
+        print('avg correlation is:', numpy.average(correlation))
+
+golden_standard_parsing()
