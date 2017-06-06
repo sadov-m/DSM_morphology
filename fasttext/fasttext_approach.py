@@ -9,7 +9,7 @@ start_time = time.time()
 
 def training_the_model():
     # first training: '/home/ubuntu/PycharmProjects//DSM_morphology/data.txt'
-    fasttext.skipgram(path, 'fasttext_model', dim=300, min_count=5, neg=15, minn=2, maxn=4)
+    fasttext.skipgram(path, 'fasttext_model', dim=300, min_count=5, neg=15, minn=4, maxn=5)
 
 training_the_model()
 print("Elapsed time for learning: {:.3f} sec".format(time.time() - start_time))
