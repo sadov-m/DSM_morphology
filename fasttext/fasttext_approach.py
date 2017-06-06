@@ -3,7 +3,7 @@ import fasttext
 import time
 from scipy import spatial
 
-path = 'train_data.txt'
+path = 'data.txt'
 start_time = time.time()
 
 
