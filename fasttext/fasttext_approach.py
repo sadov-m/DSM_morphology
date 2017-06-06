@@ -1,34 +1,41 @@
 # coding: utf-8
 import fasttext
 import time
+from scipy import spatial
 
-path = '/home/ubuntu/lemmas_only/text_0.txt'
+path = 'train_data.txt'
 start_time = time.time()
 
 
 def training_the_model():
     # first training: '/home/ubuntu/PycharmProjects//DSM_morphology/data.txt'
-    fasttext.skipgram(path, 'model', dim=300, min_count=3, neg=15, thread=3)
+    fasttext.skipgram(path, 'fasttext_model', dim=300, min_count=5, neg=15, minn=2, maxn=4)
 
 training_the_model()
 print("Elapsed time for learning: {:.3f} sec".format(time.time() - start_time))
 
 
-def checking_the_model():
+# word_pairs should be loaded as a list in which every pair is a string
+# string should cointain two words separated by space or escape sequence (\t,\n)
+def checking_the_model(word_pairs_to_check, manual_input=False):
     model = fasttext.load_model('model.bin')
 
-    # toy model: '/home/ubuntu/PycharmProjects/DSM_morphology/fasttext/first_model_cbow/model.bin')
-    #print u'что' in model
-    #print(model[u'что'])
+    if manual_input:
+        word_to_analyze = raw_input('type in a word to check: ')
+        word_to_compare = raw_input('type in the second word: ')
 
-    #print u'сепулька' in model
-    #print(model[u'сепулька'])
+    else:
 
-    classic_model = gensim.models.Word2Vec.load('/home/ubuntu/model_w2v/word2vec_standart')
+        for pair in word_pairs_to_check:
 
-    word_to_analyze = u'гнать' # input('type in a word to check: ')
+            word_1, word_2 = pair.split()
 
-    print('similar words by vector are:',
-          classic_model.most_similar(positive=[numpy.array(model[word_to_analyze], dtype='float32')], topn = 5))
+            dataSetI = model[word_1]
+            dataSetII = model[word_2]
+            result = 1 - spatial.distance.cosine(dataSetI, dataSetII)
 
-checking_the_model()
+            print(word_1, word_2,result)
+            print("Elapsed time for this word: {:.3f} sec".format(time.time() - start_time))
+
+#strings = [u'кумовство потакание', u'ребенок\tбаловаться', u'жизнь\nсуществование']
+#checking_the_model(strings)
