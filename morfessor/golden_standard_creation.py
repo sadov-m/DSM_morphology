@@ -8,8 +8,9 @@ from lxml import html
 import random
 from time import sleep
 import csv
-from scipy.stats import spearmanr
+#from scipy.stats import spearmanr
 import numpy
+from krippendorff_alpha import krippendorff_alpha, interval_metric
 
 start_time = time.time()
 io = morfessor.MorfessorIO()
@@ -17,7 +18,8 @@ reg_exp = re.compile('[а-яёА-ЯЁ]+')
 model_types = io.read_binary_model_file('types')
 
 
-def simple_lex_sort():
+
+def sort_by_morfessor_segmentation():
     path = 'C:/Users/Ольга/Downloads/lemmas_only'
     container = []
     words_for_gold_std = []
@@ -32,19 +34,26 @@ def simple_lex_sort():
             tokens_set = set(tokens)
 
             for ind, token in enumerate(tokens_set):
+
                 if reg_exp.search(token):
+
                     try:
                         candidate = model_types.segment(token)
+
                     except:
                         candidate = model_types.viterbi_segment(token)
+
                     if len(candidate) > 4:
                         words_for_gold_std.append(''.join(candidate))
+
                 if ind % 10000 == 0:
                     print(ind, '/', len(tokens_set))
             #print(words_for_gold_std, len(words_for_gold_std))
             print("Elapsed time for a file: {:.3f} sec".format(time.time() - start_time))
+
             with open('gold_standard/%d.txt' % text_num, 'w', encoding='utf-8') as writer:
                 writer.write(' '.join(words_for_gold_std))
+
             words_for_gold_std = []
 
 
@@ -67,6 +76,7 @@ def sort_by_freq_in_rnc():
 
         total_tokens_set = set()
         not_found_tokens = set()
+
         for text_num, filename in enumerate(container_gold[0][2]):
 
             with open(container_gold[0][0] + '/' + filename, encoding='utf-8') as opener:
@@ -78,35 +88,44 @@ def sort_by_freq_in_rnc():
 
                     if token in total_tokens_set:
                         pass
+
                     else:
                         params = {'lex1': token.encode(encoding='windows-1251')}
                         page = requests.get(clean_link + urllib.parse.urlencode(params))
                         # in case of crash to see whether the page returns what was stated in Chrome
                         """with open('html.txt', 'w', encoding='utf-8') as f:
-                f.write(page.text)"""
+                          f.write(page.text)"""
                         tree = html.fromstring(page.content)
                         freq_xpath = "/html/body/div[@class='content']/p[3]/span[3]"
 
                         if freq_xpath:
+
                             freq = 0
+
                             try:
                                 freq = ''.join(digit_finder.findall(tree.xpath(freq_xpath)[0].text_content()))
+
                             # if token not found in corpora
                             except IndexError:
 
                                 if token in not_found_tokens:
                                     pass
+
                                 else:
                                     print(token)
                                     not_found_tokens.add(token)
+
                             try:
                                 freq = int(freq)
+
+                            #if token is not digit
                             except TypeError:
                                 print(token, freq)
 
                             if freq > 0 and freq < 1000:
                                 writer.write(token + ' ' + str(freq) + '\n')
                                 total_tokens_set.add(token)
+
                         sleep(0.3)  # so as not to be banned
                 print("Elapsed time for a {} file: {:.3f} sec".format(text_num, time.time() - start_time))
 
@@ -123,15 +142,20 @@ def sort_by_rutez():
         string_unpacked = string.split(',') if string else ('', '', -1)
         target, value, estimation = string_unpacked[0], string_unpacked[1], int(string_unpacked[2])
 
+        # to avoid unrelated words labeled as zero
+        # and broken strings labeled -1 (see else clause at the string number 142)
         if estimation > 0:
+
             if target in rutez_dictionary_related:
                 rutez_dictionary_related[target].add(value)
+
             else:
                 rutez_dictionary_related[target] = set()
                 rutez_dictionary_related[target].add(value)
 
             if value in rutez_dictionary_related:
                 rutez_dictionary_related[value].add(target)
+
             else:
                 rutez_dictionary_related[value] = set()
                 rutez_dictionary_related[value].add(target)
@@ -139,15 +163,19 @@ def sort_by_rutez():
     print("Elapsed time for a dictionary: {:.3f} sec".format(time.time() - start_time))
 
     with open('golden_standard_final.txt', encoding='utf-8') as gold_std_opener:
+
         words_for_pairing = gold_std_opener.read().split('\n')
         words_for_pairing = [pair.split(' ')[0] for pair in words_for_pairing]
 
         with open('problematic_words.txt', encoding='utf-8') as problematic_std_opener:
+
             another_words_for_pairing = problematic_std_opener.read().split('\n')
             words_for_pairing = set(words_for_pairing + another_words_for_pairing)
 
     with open('words_paired.txt', 'w', encoding='utf-8') as pairing_writer:
+
         for word in words_for_pairing:
+
             if word in rutez_dictionary_related:
                 string_to_write = random.choice(list(rutez_dictionary_related[word]))
                 #print(word, string_to_write, '\n', rutez_dictionary_related[word], '\n')
@@ -183,23 +211,28 @@ def sort_morph_rich_by_freq():
     print(frequent[:40])
 
 
+# checking rusvectores model for out-of-vocab words
 def oov_words_finding():
     with open('words_for_golden_standard.txt', encoding='utf-8') as open_words:
         words = open_words.read().split('\n')
 
     with open('words out of vocab.txt', 'w', encoding='utf-8') as words_writer:
+
         for word_freq in words:
             word, freq = word_freq.split(' ')
+
             try:
                 request = 'http://rusvectores.org/ruwikiruscorpora/%s/api/json' % word
                 requests.get(request).json()
+
             except:
                 words_writer.write(word+'\t'+freq+'\n')
-            sleep(0.1)
+
+            sleep(0.1) # so as not to be banned
 
 
 # to see if there any out-of-vocab words to add to golden standard
-def comparison():
+def comparison_with_golden_standard():
     with open('words_paired.txt', encoding='utf-8') as open_pairs:
         paired_words = [pair.split(' ')[0] for pair in open_pairs.read().split('\n') if ' ' in set(pair)]
         already_in = []
@@ -216,6 +249,7 @@ def comparison():
         print(already_in)
 
 
+# retrieving rusvectores model estimations for our golden standard
 def get_model_estimations():
     float_finder = re.compile('\d+.\d+')
     with open('words_ruwikiruscorpora_estimated.txt', 'w', encoding='utf-8') as estimation_writer:
@@ -224,24 +258,29 @@ def get_model_estimations():
             paired_words = [pair for pair in dataset_open.read().split('\n') if ' ' in set(pair)]
 
             for couple in paired_words:
+
                 try:
                     target_word, paired_word = couple.split(' ')
+
                 except ValueError:
                     print(couple)
                     exit(1)
+
                 request = 'http://rusvectores.org/ruwikiruscorpora/%s__%s/api/similarity' % (target_word, paired_word)
                 response = requests.get(request).text
 
                 if response == 'Unknown':
                     estimation = 'na'
+
                 else:
                     estimation = float_finder.findall(response)[0]
 
                 estimation_writer.write(target_word + ' ' + paired_word + ' ' + estimation + '\n')
 
-                
-def golden_standard_parsing():
-    path = 'golden_standard.csv'
+
+# get estimations of inter-annotator agreement
+def golden_standard_parsing(alpha=True):
+    path = 'C:/Users/Ольга/Downloads/golden_standard.csv'
     extract_pairs = re.compile('\w+-\w+-?\w+|\w+')
 
     with open(path, 'r', encoding='utf-8') as ex:
@@ -249,7 +288,6 @@ def golden_standard_parsing():
         header = next(reader)
         evaluations = [] # every elem of a list is an annotator
         word_pairs = []
-        dict_of_values = {}
 
         for line in reader:
             evaluations.append([int(elem) for elem in line[4:]])
@@ -257,16 +295,47 @@ def golden_standard_parsing():
         for string in header[4:]:
             word_pairs.append('\t'.join(extract_pairs.findall(string)[-2:]))
 
-        length = len(evaluations)
-        correlation = []
+        with open('words_paired_average_10.txt', 'w', encoding='utf-8') as writer:
 
-        for ind, annotator in enumerate(evaluations):
-            print('annotator number:', ind)
+            for ind, pair in enumerate(word_pairs):
 
-            for i in range(ind + 1, length):
-                print('their correlation with annotator number:', i, 'is', spearmanr(annotator, evaluations[i]))
-                correlation.append(spearmanr(annotator, evaluations[i])[0])
+                values = []
 
-        print('avg correlation is:', numpy.average(correlation))
+                for ident, annotator in enumerate(evaluations):
+
+                    if ident not in [5,11,12]:
+                        values.append(annotator[ind])
+
+                writer.write(pair+'\t'+str(numpy.average(values))+'\n')
+
+        # 1st version of inter-annotator agreement metric
+        """def counting_spearman():
+            # counting Spearman correlation as inter-annotator agreement metric
+            length = len(evaluations)
+            correlation = []
+
+            for ind, annotator in enumerate(evaluations):
+                print('annotator number:', ind)
+                #avg_per_annotator = []
+                #less_agr_annos = [5, 11, 12]
+
+                #if ind not in less_agr_annos:
+
+                for i in range(0, length):
+
+                        if i != ind:#+less_agr_annos:
+
+                            print('their correlation with annotator number:', i, 'is', spearmanr(annotator, evaluations[i]))
+                            correlation.append(spearmanr(annotator, evaluations[i])[0])
+                            #avg_per_annotator.append(spearmanr(annotator, evaluations[i])[0])
+                #print('avg corr per annotator number', ind, 'is', numpy.average(avg_per_annotator))
+
+            print('avg correlation is:', numpy.average(correlation))"""
+
+        def alpha_counting():
+            print("interval metric: %.3f" % krippendorff_alpha(evaluations, interval_metric, missing_items=[]))
+
+        if alpha:
+            alpha_counting()
 
 golden_standard_parsing()
