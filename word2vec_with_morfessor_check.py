@@ -67,3 +67,5 @@ def estimations_retrieval():
             writer.write(word_1+'\t'+word_2+'\t'+str(result)+'\n')
 
     print("Elapsed time for estimation: {:.3f} sec".format(time.time() - start_time))
+
+estimations_retrieval()
