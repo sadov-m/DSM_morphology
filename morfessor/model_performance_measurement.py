@@ -2,8 +2,8 @@ from scipy.stats import spearmanr
 
 golden_standard_path = 'golden_standard_final.txt'
 morph_model_eval_path = 'morpho_w2v_estimations.txt'
-fasttext_model_eval_path = 'C:/Users/Ольга/PycharmProjects/DSM_morphology/fasttext/fasttext_w2v_estimations.txt'
-regular_w2v_model_eval_path = 'C:/Users/Ольга/PycharmProjects/DSM_morphology/classic_w2v_estimations.txt'
+fasttext_model_eval_path = '../fasttext/fasttext_w2v_estimations.txt'
+regular_w2v_model_eval_path = '../classic_w2v_estimations.txt'
 
 with open(golden_standard_path, encoding='utf-8') as gs_opener:
     gs_pairs = gs_opener.read().split('\n')
