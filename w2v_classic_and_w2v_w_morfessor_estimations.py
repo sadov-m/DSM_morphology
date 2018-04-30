@@ -3,8 +3,8 @@ from scipy import spatial
 import morfessor
 import numpy
 
-model = gensim.models.Word2Vec.load('word2vec_standart')
-morph_model = gensim.models.Word2Vec.load('word2vec_morpho')
+model = gensim.models.Word2Vec.load('w2v_models/word2vec_standart')
+morph_model = gensim.models.Word2Vec.load('w2v_models/word2vec_morpho')
 io = morfessor.MorfessorIO()
 model_types = io.read_binary_model_file('morfessor/types')
 oov_words = []
@@ -14,9 +14,6 @@ def vec_for_word(word, return_sum=True):
     word_for_test = word
     compounds = []
 
-    # try:
-    #    compounds.extend(model_types.segment(word_for_test))
-    # except KeyError:
     compounds.extend(model_types.viterbi_segment(word_for_test)[0])
 
     vecs = []
@@ -25,7 +22,7 @@ def vec_for_word(word, return_sum=True):
     for compound in compounds:
 
         try:
-            vecs.append(model[compound])
+            vecs.append(morph_model[compound])
 
         except KeyError:
             vecs.append(numpy.zeros(300, dtype='float32'))
@@ -44,10 +41,10 @@ def vec_for_word(word, return_sum=True):
 
 def w2v_classic_estimations_retrieval():
 
-    with open('morfessor/golden_standard_final.txt', encoding='utf-8') as opener:
+    with open('golden_standard/golden_standard_final.txt', encoding='utf-8') as opener:
         words_pairs = opener.read().split('\n')
 
-    with open('united_w2v_model_estimations.txt', 'w', encoding='utf-8') as writer:
+    with open('w2v_model_estimations_morfessor.txt', 'w', encoding='utf-8') as writer:
 
         for pair in words_pairs:
 
@@ -62,11 +59,12 @@ def w2v_classic_estimations_retrieval():
                     oov_words.append(word)
 
             result = 1 - spatial.distance.cosine(vecs_for_words[0], vecs_for_words[1])
-
+            if result < 0:
+                result = 0.0
             writer.write(word_1+'\t'+word_2+'\t'+str(result)+'\n')
 
 
 w2v_classic_estimations_retrieval()
 
-with open('oov_words.txt', 'w', encoding='utf-8') as oov_file:
-    oov_file.write('\n'.join(oov_words))
+#with open('oov_words.txt', 'w', encoding='utf-8') as oov_file:
+#    oov_file.write('\n'.join(oov_words))
